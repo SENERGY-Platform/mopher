@@ -30,6 +30,7 @@ type Parsed struct {
 	Modules map[string]*modfile.File
 	Inverse map[string][]InverseIndexModRef
 	Latest  map[string]LatestCommitInfo
+	org     string
 }
 
 type InverseIndexModRef struct {
@@ -61,28 +62,53 @@ func (this *Parsed) StoreGraph(outputFile string, verbose bool) error {
 }
 
 func (this *Parsed) PrintDependents(dep string) error {
-	fmt.Printf("\n\n%v is used by the following repositories (sorted by usage-version)\n", dep)
 	list := this.Inverse[dep]
-	slices.SortFunc(list, func(a, b InverseIndexModRef) int {
-		return strings.Compare(a.UserModule, b.UserModule)
-	})
-	slices.SortFunc(list, func(a, b InverseIndexModRef) int {
-		return strings.Compare(a.UsesVersion, b.UsesVersion)
-	})
-	for _, ref := range list {
-		fmt.Println(ref.UserModule, ref.UsesVersion)
+	if len(list) > 0 {
+		fmt.Printf("\n\n%v is used by the following repositories (sorted by usage-version)\n", dep)
+		slices.SortFunc(list, func(a, b InverseIndexModRef) int {
+			return strings.Compare(a.UserModule, b.UserModule)
+		})
+		slices.SortFunc(list, func(a, b InverseIndexModRef) int {
+			return strings.Compare(a.UsesVersion, b.UsesVersion)
+		})
+		for _, ref := range list {
+			fmt.Println(ref.UserModule, ref.UsesVersion)
+		}
+	} else {
+		fmt.Printf("\n\n%v is used by no %v repository as dependency\n", dep, this.org)
 	}
+
 	return nil
 }
 
 func (this *Parsed) PrintWarnings() error {
-	err := this.PrintGoVersionWarnings()
+	err := this.PrintWrongModuleNameWarnings()
+	if err != nil {
+		return err
+	}
+	err = this.PrintGoVersionWarnings()
 	if err != nil {
 		return err
 	}
 	err = this.PrintDependencyVersionWarnings()
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (this *Parsed) PrintWrongModuleNameWarnings() error {
+	invalidNames := []string{}
+	for name, _ := range this.Modules {
+		if !strings.HasPrefix(name, GithubUrl+"/"+this.org) {
+			invalidNames = append(invalidNames, name)
+		}
+	}
+	if len(invalidNames) > 0 {
+		fmt.Println("\n\nfound unexpected module names:")
+		for _, name := range invalidNames {
+			fmt.Println(name)
+		}
 	}
 	return nil
 }

@@ -26,6 +26,7 @@ import (
 
 func LoadOrg(org string, maxConn int) (parsed *Parsed, err error) {
 	parsed = &Parsed{
+		org:     org,
 		Modules: map[string]*modfile.File{},
 		Inverse: map[string][]InverseIndexModRef{},
 		Latest:  map[string]LatestCommitInfo{},

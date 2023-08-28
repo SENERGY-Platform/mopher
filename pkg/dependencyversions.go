@@ -19,12 +19,20 @@ package pkg
 import (
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 )
 
 func (this *Parsed) PrintDependencyVersionWarnings() error {
-	for dep, _ := range this.Latest {
-		err := this.PrintVersionWarningsForDependency(dep)
+	//make result deterministic by sorting the keys
+	keys := []string{}
+	for key, _ := range this.Latest {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		err := this.PrintVersionWarningsForDependency(key)
 		if err != nil {
 			return err
 		}
@@ -42,7 +50,11 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) error {
 		fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.Hash, latestVersion.LatestTag)
 	}
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
-		return strings.Compare(a.Version, b.Version)
+		result := strings.Compare(a.Version, b.Version)
+		if result == 0 {
+			result = strings.Compare(a.Name, b.Name)
+		}
+		return result
 	})
 	for _, e := range list {
 		fmt.Println(e.Version, e.Name)

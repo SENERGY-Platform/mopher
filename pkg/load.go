@@ -24,7 +24,7 @@ import (
 	"sync"
 )
 
-func LoadOrg(org string) (parsed *Parsed, err error) {
+func LoadOrg(org string, maxConn int) (parsed *Parsed, err error) {
 	parsed = &Parsed{
 		Modules: map[string]*modfile.File{},
 		Inverse: map[string][]InverseIndexModRef{},
@@ -34,11 +34,32 @@ func LoadOrg(org string) (parsed *Parsed, err error) {
 	if err != nil {
 		return parsed, err
 	}
+	parsed.Modules, parsed.Latest, err = getRepoInfos(parsed.Repos, maxConn)
+	if err != nil {
+		return parsed, err
+	}
+	for name, module := range parsed.Modules {
+		for _, req := range module.Require {
+			version, semantic := normalizeGoDependencyVersion(req.Mod.Version)
+			parsed.Inverse[req.Mod.Path] = append(parsed.Inverse[req.Mod.Path], InverseIndexModRef{
+				UsesVersion:     version,
+				UserModule:      name,
+				SemanticVersion: semantic,
+			})
+		}
+	}
+
+	return parsed, nil
+}
+
+func getRepoInfos(repos []*github.Repository, maxConn int) (modules map[string]*modfile.File, latestInfo map[string]LatestCommitInfo, err error) {
+	modules = map[string]*modfile.File{}
+	latestInfo = map[string]LatestCommitInfo{}
 	mux := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	asyncErrors := []error{}
-	limit := make(chan bool, 25)
-	for _, repo := range parsed.Repos {
+	limit := make(chan bool, maxConn)
+	for _, repo := range repos {
 		if repo.Language != nil && *repo.Language == "Go" && (repo.Archived == nil || *repo.Archived == false) {
 			wg.Add(1)
 			go func(r *github.Repository) {
@@ -62,27 +83,16 @@ func LoadOrg(org string) (parsed *Parsed, err error) {
 					asyncErrors = append(asyncErrors, err)
 					return
 				}
-				parsed.Modules[name] = module
-				parsed.Latest[name] = latest
+				modules[name] = module
+				latestInfo[name] = latest
 			}(repo)
 		}
 	}
 	wg.Wait()
 	if len(asyncErrors) > 0 {
-		return parsed, errors.Join(asyncErrors...)
+		return modules, latestInfo, errors.Join(asyncErrors...)
 	}
-	for name, module := range parsed.Modules {
-		for _, req := range module.Require {
-			version, semantic := normalizeGoDependencyVersion(req.Mod.Version)
-			parsed.Inverse[req.Mod.Path] = append(parsed.Inverse[req.Mod.Path], InverseIndexModRef{
-				UsesVersion:     version,
-				UserModule:      name,
-				SemanticVersion: semantic,
-			})
-		}
-	}
-
-	return parsed, nil
+	return modules, latestInfo, nil
 }
 
 func normalizeGoDependencyVersion(version string) (string, bool) {

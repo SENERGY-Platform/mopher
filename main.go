@@ -31,10 +31,12 @@ import (
 func main() {
 	var org, dep, graph string
 	var verbose bool
+	var maxConn int
 	flag.StringVar(&org, "org", "", "github org to be scanned")
 	flag.StringVar(&dep, "dep", "", "dependency to be scanned for in org (optional")
 	flag.StringVar(&graph, "graph", "", "output file for plantuml dependency graph (optional)")
 	flag.BoolVar(&verbose, "graph_verbose", false, "include none org dependencies in plantuml")
+	flag.IntVar(&maxConn, "max_conn", 25, "max parallel connections to github")
 	flag.BoolFunc("debug", "enables debug logs", func(s string) error {
 		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})))
 		return nil
@@ -79,7 +81,7 @@ func main() {
 		return
 	}
 
-	parsed, err := pkg.LoadOrg(org)
+	parsed, err := pkg.LoadOrg(org, maxConn)
 	if err != nil {
 		log.Fatal(err)
 		return

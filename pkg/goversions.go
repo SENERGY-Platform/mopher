@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"sort"
 	"strings"
 )
 
@@ -32,7 +33,11 @@ func (this *Parsed) PrintGoVersionWarnings() error {
 		fmt.Println("\n\nthe following repositories use a go version != ", normalizeGoVersion(runtime.Version()))
 	}
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
-		return strings.Compare(a.Version, b.Version)
+		result := strings.Compare(a.Version, b.Version)
+		if result == 0 {
+			result = strings.Compare(a.Name, b.Name)
+		}
+		return result
 	})
 	for _, e := range list {
 		fmt.Println(e.Version, e.Name)
@@ -42,7 +47,16 @@ func (this *Parsed) PrintGoVersionWarnings() error {
 
 func (this *Parsed) listOldGoVersionUsage() (result []VersionUsageRef, err error) {
 	current := normalizeGoVersion(runtime.Version())
-	for name, mod := range this.Modules {
+
+	//make result deterministic by sorting the keys
+	keys := []string{}
+	for key, _ := range this.Latest {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, name := range keys {
+		mod := this.Modules[name]
 		if mod.Go != nil {
 			modGoVersion := normalizeGoVersion(mod.Go.Version)
 			if modGoVersion != current {

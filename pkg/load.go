@@ -17,8 +17,11 @@
 package pkg
 
 import (
+	"errors"
+	"github.com/google/go-github/v54/github"
 	"golang.org/x/mod/modfile"
 	"strings"
+	"sync"
 )
 
 func LoadOrg(org string) (parsed *Parsed, err error) {
@@ -28,21 +31,45 @@ func LoadOrg(org string) (parsed *Parsed, err error) {
 		Latest:  map[string]LatestCommitInfo{},
 	}
 	parsed.Repos, err = loadOrgRepos(org)
+	if err != nil {
+		return parsed, err
+	}
+	mux := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	asyncErrors := []error{}
+	limit := make(chan bool, 25)
 	for _, repo := range parsed.Repos {
 		if repo.Language != nil && *repo.Language == "Go" && (repo.Archived == nil || *repo.Archived == false) {
-			name, module, err := parseRepoModuleFile(repo)
-			if err == ErrModfileNotFound {
-				continue
-			}
-			if err != nil {
-				return parsed, err
-			}
-			parsed.Modules[name] = module
-			parsed.Latest[name], err = getLatestInfo(repo)
-			if err != nil {
-				return parsed, err
-			}
+			wg.Add(1)
+			go func(r *github.Repository) {
+				defer wg.Done()
+				limit <- true
+				defer func() {
+					<-limit
+				}()
+				name, module, err := parseRepoModuleFile(r)
+				if err == ErrModfileNotFound {
+					return
+				}
+				if err != nil {
+					asyncErrors = append(asyncErrors, err)
+					return
+				}
+				latest, err := getLatestInfo(r)
+				mux.Lock()
+				defer mux.Unlock()
+				if err != nil {
+					asyncErrors = append(asyncErrors, err)
+					return
+				}
+				parsed.Modules[name] = module
+				parsed.Latest[name] = latest
+			}(repo)
 		}
+	}
+	wg.Wait()
+	if len(asyncErrors) > 0 {
+		return parsed, errors.Join(asyncErrors...)
 	}
 	for name, module := range parsed.Modules {
 		for _, req := range module.Require {

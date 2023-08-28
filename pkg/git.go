@@ -61,11 +61,11 @@ func getLatestInfo(repo *github.Repository) (result LatestCommitInfo, err error)
 	}
 	for _, ref := range refs {
 		if ref.Name() == defaultRefName {
-			return LatestCommitInfo{
+			result = LatestCommitInfo{
 				Hash:      shorHash(ref.Hash().String()),
-				Branch:    ref.Name().Short(),
 				LatestTag: latestTag,
-			}, nil
+			}
+			return result, nil
 		}
 	}
 

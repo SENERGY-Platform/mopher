@@ -40,7 +40,6 @@ type InverseIndexModRef struct {
 
 type LatestCommitInfo struct {
 	Hash      string
-	Branch    string
 	LatestTag string
 }
 

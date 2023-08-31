@@ -37,6 +37,16 @@ func (this *Parsed) PrintDependencyVersionWarnings() error {
 			return err
 		}
 	}
+
+	order, err := this.GetRecommendedUpdateOrder()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\n\nrecommended update order:\n")
+	for _, e := range order {
+		fmt.Println(e)
+	}
+
 	return nil
 }
 
@@ -46,9 +56,10 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) error {
 	if err != nil {
 		return err
 	}
-	if len(list) > 0 {
-		fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.Hash, latestVersion.LatestTag)
+	if len(list) == 0 {
+		return nil
 	}
+	fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.Hash, latestVersion.LatestTag)
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
 		result := strings.Compare(a.Version, b.Version)
 		if result == 0 {

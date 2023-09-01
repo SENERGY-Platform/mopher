@@ -31,10 +31,15 @@ func (this *Parsed) PrintDependencyVersionWarnings() error {
 	}
 	sort.Strings(keys)
 
+	updateOrderFilter := map[string]bool{}
+
 	for _, key := range keys {
-		err := this.PrintVersionWarningsForDependency(key)
+		dependent, err := this.PrintVersionWarningsForDependency(key)
 		if err != nil {
 			return err
+		}
+		for _, d := range dependent {
+			updateOrderFilter[d] = true
 		}
 	}
 
@@ -44,20 +49,38 @@ func (this *Parsed) PrintDependencyVersionWarnings() error {
 	}
 	fmt.Printf("\n\nrecommended update order:\n")
 	for _, e := range order {
-		fmt.Println(e)
+		if this.toBeUpdated(updateOrderFilter, e) {
+			updateOrderFilter[e] = true
+			fmt.Println(e)
+		}
 	}
 
 	return nil
 }
 
-func (this *Parsed) PrintVersionWarningsForDependency(dep string) error {
+func (this *Parsed) toBeUpdated(filter map[string]bool, e string) bool {
+	if filter[e] {
+		return true
+	}
+	module, ok := this.Modules[e]
+	if ok {
+		for _, req := range module.Require {
+			if this.toBeUpdated(filter, req.Mod.Path) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (this *Parsed) PrintVersionWarningsForDependency(dep string) (dependent []string, err error) {
 	latestVersion := this.Latest[dep]
 	list, err := this.listOldDependencyVersionUsage(dep, latestVersion)
 	if err != nil {
-		return err
+		return dependent, err
 	}
 	if len(list) == 0 {
-		return nil
+		return dependent, nil
 	}
 	fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.Hash, latestVersion.LatestTag)
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
@@ -69,8 +92,9 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) error {
 	})
 	for _, e := range list {
 		fmt.Println(e.Version, e.Name)
+		dependent = append(dependent, e.Name)
 	}
-	return nil
+	return dependent, nil
 }
 
 func (this *Parsed) listOldDependencyVersionUsage(dep string, version LatestCommitInfo) (result []VersionUsageRef, err error) {

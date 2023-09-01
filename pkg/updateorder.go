@@ -43,30 +43,28 @@ func NewTextNode(text string) *TextNode {
 
 func (this *Parsed) GetRecommendedUpdateOrder() (result []string, err error) {
 	textToNodes := map[string]*TextNode{}
-
 	g := simple.NewDirectedGraph()
-	for called, callers := range this.Inverse {
-		if _, ok := this.Modules[called]; ok {
-			for _, caller := range callers {
-				if _, ok := this.Modules[caller.UserModule]; ok {
-					callerNode, ok := textToNodes[caller.UserModule]
-					if !ok {
-						callerNode = NewTextNode(caller.UserModule)
-						textToNodes[caller.UserModule] = callerNode
-					}
-					calledNode, ok := textToNodes[called]
-					if !ok {
-						calledNode = NewTextNode(called)
-						textToNodes[called] = calledNode
-					}
-					if g.Node(callerNode.Id) == nil {
-						g.AddNode(callerNode)
-					}
-					if g.Node(calledNode.Id) == nil {
-						g.AddNode(calledNode)
-					}
-					g.SetEdge(simple.Edge{T: callerNode, F: calledNode})
+	for caller, module := range this.Modules {
+		callerNode, ok := textToNodes[caller]
+		if !ok {
+			callerNode = NewTextNode(caller)
+			textToNodes[caller] = callerNode
+		}
+		if g.Node(callerNode.Id) == nil {
+			g.AddNode(callerNode)
+		}
+		for _, req := range module.Require {
+			called := req.Mod.Path
+			if _, ok := this.Modules[called]; ok {
+				calledNode, ok := textToNodes[called]
+				if !ok {
+					calledNode = NewTextNode(called)
+					textToNodes[called] = calledNode
 				}
+				if g.Node(calledNode.Id) == nil {
+					g.AddNode(calledNode)
+				}
+				g.SetEdge(simple.Edge{T: callerNode, F: calledNode})
 			}
 		}
 	}

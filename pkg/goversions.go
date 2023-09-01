@@ -18,6 +18,9 @@ package pkg
 
 import (
 	"fmt"
+	"golang.org/x/mod/semver"
+	"log/slog"
+	"regexp"
 	"runtime"
 	"slices"
 	"sort"
@@ -30,7 +33,7 @@ func (this *Parsed) PrintGoVersionWarnings() (deprecated []string, err error) {
 		return deprecated, err
 	}
 	if len(list) > 0 {
-		fmt.Println("\n\nthe following repositories use a go version != ", normalizeGoVersion(runtime.Version()))
+		fmt.Println("\n\nthe following repositories use a go version !=", normalizeGoVersion(getLatestGoVersion()))
 	}
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
 		result := strings.Compare(a.Version, b.Version)
@@ -47,7 +50,7 @@ func (this *Parsed) PrintGoVersionWarnings() (deprecated []string, err error) {
 }
 
 func (this *Parsed) listOldGoVersionUsage() (result []VersionUsageRef, err error) {
-	current := normalizeGoVersion(runtime.Version())
+	current := normalizeGoVersion(getLatestGoVersion())
 
 	//make result deterministic by sorting the keys
 	keys := []string{}
@@ -84,4 +87,26 @@ func normalizeGoVersion(version string) string {
 		version = strings.Join(parts[:2], ".")
 	}
 	return version
+}
+
+func getLatestGoVersion() string {
+	buildVersion := runtime.Version()
+	tags, err := getGolangTagsFromDockerhub()
+	if err != nil {
+		slog.Debug(fmt.Sprint("unable to load tags from dockerhub:", err))
+		slog.Debug("fallback to mopher build go version")
+		return runtime.Version()
+	}
+	for _, tag := range tags {
+		if isValidSemanticVersion(tag) && semver.Compare(buildVersion, tag) < 1 {
+			return tag
+		}
+	}
+	slog.Debug("no go build tag found at dockerhub. fallback to mopher build go version")
+	return runtime.Version()
+}
+
+func isValidSemanticVersion(version string) bool {
+	re := regexp.MustCompile(`^[0-9]+\.[0-9]+$`)
+	return re.MatchString(version)
 }

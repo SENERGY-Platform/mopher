@@ -83,3 +83,18 @@ func (this *Parsed) GetRecommendedUpdateOrder() (result []string, err error) {
 	}
 	return result, nil
 }
+
+func (this *Parsed) toBeUpdated(filter map[string]bool, e string) bool {
+	if filter[e] {
+		return true
+	}
+	module, ok := this.Modules[e]
+	if ok {
+		for _, req := range module.Require {
+			if this.toBeUpdated(filter, req.Mod.Path) {
+				return true
+			}
+		}
+	}
+	return false
+}

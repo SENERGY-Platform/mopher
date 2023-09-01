@@ -23,7 +23,7 @@ import (
 	"strings"
 )
 
-func (this *Parsed) PrintDependencyVersionWarnings() error {
+func (this *Parsed) PrintDependencyVersionWarnings() (deprecated []string, err error) {
 	//make result deterministic by sorting the keys
 	keys := []string{}
 	for key, _ := range this.Latest {
@@ -31,46 +31,15 @@ func (this *Parsed) PrintDependencyVersionWarnings() error {
 	}
 	sort.Strings(keys)
 
-	updateOrderFilter := map[string]bool{}
-
 	for _, key := range keys {
-		dependent, err := this.PrintVersionWarningsForDependency(key)
+		subDependent, err := this.PrintVersionWarningsForDependency(key)
 		if err != nil {
-			return err
+			return deprecated, err
 		}
-		for _, d := range dependent {
-			updateOrderFilter[d] = true
-		}
+		deprecated = append(deprecated, subDependent...)
 	}
 
-	order, err := this.GetRecommendedUpdateOrder()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("\n\nrecommended update order:\n")
-	for _, e := range order {
-		if this.toBeUpdated(updateOrderFilter, e) {
-			updateOrderFilter[e] = true
-			fmt.Println(e)
-		}
-	}
-
-	return nil
-}
-
-func (this *Parsed) toBeUpdated(filter map[string]bool, e string) bool {
-	if filter[e] {
-		return true
-	}
-	module, ok := this.Modules[e]
-	if ok {
-		for _, req := range module.Require {
-			if this.toBeUpdated(filter, req.Mod.Path) {
-				return true
-			}
-		}
-	}
-	return false
+	return deprecated, nil
 }
 
 func (this *Parsed) PrintVersionWarningsForDependency(dep string) (dependent []string, err error) {

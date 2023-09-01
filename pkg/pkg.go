@@ -82,22 +82,33 @@ func (this *Parsed) PrintDependents(dep string) error {
 }
 
 func (this *Parsed) PrintWarnings() error {
-	err := this.PrintWrongModuleNameWarnings()
+	updateOrderFilter := map[string]bool{}
+	deprecated, err := this.PrintWrongModuleNameWarnings()
 	if err != nil {
 		return err
 	}
-	err = this.PrintGoVersionWarnings()
+	for _, d := range deprecated {
+		updateOrderFilter[d] = true
+	}
+	deprecated, err = this.PrintGoVersionWarnings()
 	if err != nil {
 		return err
 	}
-	err = this.PrintDependencyVersionWarnings()
+	for _, d := range deprecated {
+		updateOrderFilter[d] = true
+	}
+	deprecated, err = this.PrintDependencyVersionWarnings()
 	if err != nil {
 		return err
 	}
+	for _, d := range deprecated {
+		updateOrderFilter[d] = true
+	}
+	err = this.PrintUpdateOrder(updateOrderFilter)
 	return nil
 }
 
-func (this *Parsed) PrintWrongModuleNameWarnings() error {
+func (this *Parsed) PrintWrongModuleNameWarnings() (deprecated []string, err error) {
 	invalidNames := []string{}
 	for name, _ := range this.Modules {
 		if !strings.HasPrefix(name, GithubUrl+"/"+this.org) {
@@ -108,6 +119,22 @@ func (this *Parsed) PrintWrongModuleNameWarnings() error {
 		fmt.Println("\n\nfound unexpected module names:")
 		for _, name := range invalidNames {
 			fmt.Println(name)
+			deprecated = append(deprecated, name)
+		}
+	}
+	return deprecated, nil
+}
+
+func (this *Parsed) PrintUpdateOrder(filter map[string]bool) error {
+	order, err := this.GetRecommendedUpdateOrder()
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\n\nrecommended update order:\n")
+	for _, e := range order {
+		if this.toBeUpdated(filter, e) {
+			filter[e] = true
+			fmt.Println(e)
 		}
 	}
 	return nil

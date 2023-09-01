@@ -24,10 +24,10 @@ import (
 	"strings"
 )
 
-func (this *Parsed) PrintGoVersionWarnings() error {
+func (this *Parsed) PrintGoVersionWarnings() (deprecated []string, err error) {
 	list, err := this.listOldGoVersionUsage()
 	if err != nil {
-		return err
+		return deprecated, err
 	}
 	if len(list) > 0 {
 		fmt.Println("\n\nthe following repositories use a go version != ", normalizeGoVersion(runtime.Version()))
@@ -41,8 +41,9 @@ func (this *Parsed) PrintGoVersionWarnings() error {
 	})
 	for _, e := range list {
 		fmt.Println(e.Version, e.Name)
+		deprecated = append(deprecated, e.Name)
 	}
-	return nil
+	return deprecated, nil
 }
 
 func (this *Parsed) listOldGoVersionUsage() (result []VersionUsageRef, err error) {

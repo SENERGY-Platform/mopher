@@ -17,9 +17,12 @@
 package pkg
 
 import (
+	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 	"math/rand"
+	"slices"
+	"strings"
 )
 
 type TextNode struct {
@@ -67,7 +70,11 @@ func (this *Parsed) GetRecommendedUpdateOrder() (result []string, err error) {
 			}
 		}
 	}
-	nodes, err := topo.Sort(g)
+	nodes, err := topo.SortStabilized(g, func(nodes []graph.Node) {
+		slices.SortFunc(nodes, func(a, b graph.Node) int {
+			return strings.Compare(a.(*TextNode).Text, b.(*TextNode).Text)
+		})
+	})
 	if err != nil {
 		return result, err
 	}

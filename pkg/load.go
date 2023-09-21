@@ -20,6 +20,7 @@ import (
 	"errors"
 	"github.com/google/go-github/v54/github"
 	"golang.org/x/mod/modfile"
+	"log/slog"
 	"strings"
 	"sync"
 )
@@ -87,6 +88,16 @@ func getRepoInfos(repos []*github.Repository, maxConn int) (modules map[string]*
 				modules[name] = module
 				latestInfo[name] = latest
 			}(repo)
+		} else {
+			name := ""
+			if repo.Name != nil {
+				name = *repo.Name
+			}
+			language := ""
+			if repo.Language != nil {
+				language = *repo.Language
+			}
+			slog.Debug("ignored repo", "repo-name", name, "language", language)
 		}
 	}
 	wg.Wait()

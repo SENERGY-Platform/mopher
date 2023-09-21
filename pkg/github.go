@@ -37,12 +37,12 @@ func loadOrgRepos(org string) (result []*github.Repository, err error) {
 		if err != nil {
 			return result, err
 		}
+		result = append(result, repos...)
 		if resp.NextPage == 0 {
 			break
 		} else {
 			options.ListOptions.Page = resp.NextPage
 		}
-		result = append(result, repos...)
 	}
 	return result, nil
 }

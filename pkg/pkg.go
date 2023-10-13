@@ -17,160 +17,41 @@
 package pkg
 
 import (
-	"fmt"
-	"github.com/google/go-github/v54/github"
-	"golang.org/x/mod/modfile"
-	"os"
-	"slices"
-	"strings"
+	"io"
+	"log"
 )
 
-type Parsed struct {
-	Repos   []*github.Repository
-	Modules map[string]*modfile.File
-	Inverse map[string][]InverseIndexModRef
-	Latest  map[string]LatestCommitInfo
-	org     string
-}
+func Mopher(writer io.Writer, org string, maxConn int, graph string, verbose bool, dep string, warnUnsyncDev bool) {
+	if org == "" {
+		log.Fatal("missing org input")
+		return
+	}
 
-type InverseIndexModRef struct {
-	UsesVersion     string
-	UserModule      string
-	SemanticVersion bool
-}
-
-type LatestCommitInfo struct {
-	MainHash  string
-	DevHash   string
-	LatestTag string
-}
-
-func (this *Parsed) StoreGraph(outputFile string, verbose bool) error {
-	text, err := this.generatePlantuml(verbose)
+	parsed, err := LoadOrg(org, maxConn)
 	if err != nil {
-		return err
-	}
-	file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	_, err = file.Write([]byte(text))
-	if err != nil {
-		file.Close()
-		return err
-	}
-	return file.Close()
-}
-
-func (this *Parsed) PrintDependents(dep string) error {
-	list := this.Inverse[dep]
-	if len(list) > 0 {
-		fmt.Printf("\n\n%v is used by the following repositories (sorted by usage-version)\n", dep)
-		slices.SortFunc(list, func(a, b InverseIndexModRef) int {
-			return strings.Compare(a.UserModule, b.UserModule)
-		})
-		slices.SortFunc(list, func(a, b InverseIndexModRef) int {
-			return strings.Compare(a.UsesVersion, b.UsesVersion)
-		})
-		for _, ref := range list {
-			fmt.Println(ref.UserModule, ref.UsesVersion)
-		}
-	} else {
-		fmt.Printf("\n\n%v is used by no %v repository as dependency\n", dep, this.org)
+		log.Fatal(err)
+		return
 	}
 
-	return nil
-}
+	parsed.SetOutput(writer)
 
-func (this *Parsed) PrintWarnings(warnUnsyncDev bool) error {
-	updateOrderFilter := map[string]bool{}
-
-	deprecated, err := this.PrintWrongModuleNameWarnings()
-	if err != nil {
-		return err
-	}
-	for _, d := range deprecated {
-		updateOrderFilter[d] = true
-	}
-	deprecated, err = this.PrintGoVersionWarnings()
-	if err != nil {
-		return err
-	}
-	for _, d := range deprecated {
-		updateOrderFilter[d] = true
-	}
-
-	if warnUnsyncDev {
-		deprecated, err = this.PrintUnsincBranches()
+	if graph != "" {
+		err = parsed.StoreGraph(graph, verbose)
 		if err != nil {
-			return err
-		}
-		for _, d := range deprecated {
-			updateOrderFilter[d] = true
+			log.Fatal(err)
+			return
 		}
 	}
-
-	deprecated, err = this.PrintDependencyVersionWarnings()
+	if dep != "" {
+		err = parsed.PrintDependents(dep)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+	}
+	err = parsed.PrintWarnings(warnUnsyncDev)
 	if err != nil {
-		return err
+		log.Fatal(err)
+		return
 	}
-	for _, d := range deprecated {
-		updateOrderFilter[d] = true
-	}
-	err = this.PrintUpdateOrder(updateOrderFilter)
-	return nil
-}
-
-func (this *Parsed) PrintWrongModuleNameWarnings() (deprecated []string, err error) {
-	invalidNames := []string{}
-	for name, _ := range this.Modules {
-		if !strings.HasPrefix(name, GithubUrl+"/"+this.org) {
-			invalidNames = append(invalidNames, name)
-		}
-	}
-	if len(invalidNames) > 0 {
-		fmt.Println("\n\nfound unexpected module names:")
-		for _, name := range invalidNames {
-			fmt.Println(name)
-			deprecated = append(deprecated, name)
-		}
-	}
-	return deprecated, nil
-}
-
-func (this *Parsed) PrintUnsincBranches() (deprecated []string, err error) {
-	unsyncRepos := []string{}
-	for module, commitInfo := range this.Latest {
-		if commitInfo.DevHash != "" && commitInfo.DevHash != commitInfo.MainHash {
-			unsyncRepos = append(unsyncRepos, module)
-		}
-	}
-	if len(unsyncRepos) > 0 {
-		fmt.Println("\n\nfound repositories where master/main and dev branches are not synced:")
-		for _, name := range unsyncRepos {
-			fmt.Println(name)
-			deprecated = append(deprecated, name)
-		}
-	}
-	return deprecated, nil
-}
-
-func (this *Parsed) PrintUpdateOrder(filter map[string]bool) error {
-	order, err := this.GetRecommendedUpdateOrder()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("\n\nrecommended update order:\n")
-	for _, e := range order {
-		if this.toBeUpdated(filter, e) {
-			filter[e] = true
-			fmt.Println(e)
-		}
-	}
-	return nil
-}
-
-type VersionUsageRef struct {
-	Name    string
-	Version string
 }

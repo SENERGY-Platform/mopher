@@ -34,7 +34,10 @@ func (this *Parsed) PrintGoVersionWarnings() (deprecated []string, err error) {
 		return deprecated, err
 	}
 	if len(list) > 0 {
-		fmt.Println("\n\nthe following repositories use a go version !=", checkedGoVersion)
+		_, err = fmt.Fprintln(this.output, "\n\nthe following repositories use a go version !=", checkedGoVersion)
+		if err != nil {
+			return deprecated, err
+		}
 	}
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
 		result := strings.Compare(a.Version, b.Version)
@@ -44,7 +47,10 @@ func (this *Parsed) PrintGoVersionWarnings() (deprecated []string, err error) {
 		return result
 	})
 	for _, e := range list {
-		fmt.Println(e.Version, e.Name)
+		_, err = fmt.Fprintln(this.output, e.Version, e.Name)
+		if err != nil {
+			return deprecated, err
+		}
 		deprecated = append(deprecated, e.Name)
 	}
 	return deprecated, nil

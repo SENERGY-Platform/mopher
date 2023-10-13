@@ -51,7 +51,10 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) (dependent []s
 	if len(list) == 0 {
 		return dependent, nil
 	}
-	fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.MainHash, latestVersion.LatestTag)
+	_, err = fmt.Fprintf(this.output, "\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.MainHash, latestVersion.LatestTag)
+	if err != nil {
+		return dependent, err
+	}
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
 		result := strings.Compare(a.Version, b.Version)
 		if result == 0 {
@@ -60,7 +63,10 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) (dependent []s
 		return result
 	})
 	for _, e := range list {
-		fmt.Println(e.Version, e.Name)
+		_, err = fmt.Fprintln(this.output, e.Version, e.Name)
+		if err != nil {
+			return dependent, err
+		}
 		dependent = append(dependent, e.Name)
 	}
 	return dependent, nil

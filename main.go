@@ -21,6 +21,7 @@ import (
 	"flag"
 	"github.com/SENERGY-Platform/mopher/pkg"
 	"golang.org/x/mod/modfile"
+	"io"
 	"log"
 	"log/slog"
 	"os"
@@ -29,11 +30,12 @@ import (
 )
 
 func main() {
-	var org, dep, graph string
+	var org, dep, graph, outputFile string
 	var verbose bool
 	var warnUnsyncDev bool
 	var maxConn int
 	flag.StringVar(&org, "org", "", "github org to be scanned")
+	flag.StringVar(&outputFile, "o", "", "output file; if not used, the output will be printed to std out")
 	flag.StringVar(&dep, "dep", "", "dependency to be scanned for in org (optional")
 	flag.StringVar(&graph, "graph", "", "output file for plantuml dependency graph (optional)")
 	flag.BoolVar(&verbose, "graph_verbose", false, "include none org dependencies in plantuml")
@@ -78,35 +80,18 @@ func main() {
 		return
 	}
 
-	if org == "" {
-		log.Fatal("missing org input")
-		return
+	var output io.Writer = os.Stdout
+	if outputFile != "" {
+		file, err := os.OpenFile(outputFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatal("unable to open output file", outputFile, err)
+			return
+		}
+		output = file
+		defer file.Close()
 	}
 
-	parsed, err := pkg.LoadOrg(org, maxConn)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	if graph != "" {
-		err = parsed.StoreGraph(graph, verbose)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-	}
-	if dep != "" {
-		err = parsed.PrintDependents(dep)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-	}
-	err = parsed.PrintWarnings(warnUnsyncDev)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	pkg.Mopher(output, org, maxConn, graph, verbose, dep, warnUnsyncDev)
 }
 
 func getParamsFromArg(arg string) (org string, dep string, err error) {

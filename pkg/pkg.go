@@ -40,7 +40,8 @@ type InverseIndexModRef struct {
 }
 
 type LatestCommitInfo struct {
-	Hash      string
+	MainHash  string
+	DevHash   string
 	LatestTag string
 }
 
@@ -81,8 +82,9 @@ func (this *Parsed) PrintDependents(dep string) error {
 	return nil
 }
 
-func (this *Parsed) PrintWarnings() error {
+func (this *Parsed) PrintWarnings(warnUnsyncDev bool) error {
 	updateOrderFilter := map[string]bool{}
+
 	deprecated, err := this.PrintWrongModuleNameWarnings()
 	if err != nil {
 		return err
@@ -97,6 +99,17 @@ func (this *Parsed) PrintWarnings() error {
 	for _, d := range deprecated {
 		updateOrderFilter[d] = true
 	}
+
+	if warnUnsyncDev {
+		deprecated, err = this.PrintUnsincBranches()
+		if err != nil {
+			return err
+		}
+		for _, d := range deprecated {
+			updateOrderFilter[d] = true
+		}
+	}
+
 	deprecated, err = this.PrintDependencyVersionWarnings()
 	if err != nil {
 		return err
@@ -118,6 +131,23 @@ func (this *Parsed) PrintWrongModuleNameWarnings() (deprecated []string, err err
 	if len(invalidNames) > 0 {
 		fmt.Println("\n\nfound unexpected module names:")
 		for _, name := range invalidNames {
+			fmt.Println(name)
+			deprecated = append(deprecated, name)
+		}
+	}
+	return deprecated, nil
+}
+
+func (this *Parsed) PrintUnsincBranches() (deprecated []string, err error) {
+	unsyncRepos := []string{}
+	for module, commitInfo := range this.Latest {
+		if commitInfo.DevHash != "" && commitInfo.DevHash != commitInfo.MainHash {
+			unsyncRepos = append(unsyncRepos, module)
+		}
+	}
+	if len(unsyncRepos) > 0 {
+		fmt.Println("\n\nfound repositories where master/main and dev branches are not synced:")
+		for _, name := range unsyncRepos {
 			fmt.Println(name)
 			deprecated = append(deprecated, name)
 		}

@@ -51,7 +51,7 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) (dependent []s
 	if len(list) == 0 {
 		return dependent, nil
 	}
-	fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.Hash, latestVersion.LatestTag)
+	fmt.Printf("\n\nthe following repositories use a %v version != %v %v\n", dep, latestVersion.MainHash, latestVersion.LatestTag)
 	slices.SortFunc(list, func(a, b VersionUsageRef) int {
 		result := strings.Compare(a.Version, b.Version)
 		if result == 0 {
@@ -68,7 +68,7 @@ func (this *Parsed) PrintVersionWarningsForDependency(dep string) (dependent []s
 
 func (this *Parsed) listOldDependencyVersionUsage(dep string, version LatestCommitInfo) (result []VersionUsageRef, err error) {
 	for _, ref := range this.Inverse[dep] {
-		versionStr := version.Hash
+		versionStr := version.MainHash
 		if ref.SemanticVersion {
 			versionStr = version.LatestTag
 		}

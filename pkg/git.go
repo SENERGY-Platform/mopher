@@ -59,17 +59,26 @@ func getLatestInfo(repo *github.Repository) (result LatestCommitInfo, err error)
 			}
 		}
 	}
+
+	result = LatestCommitInfo{
+		LatestTag: latestTag,
+	}
+
+	var devRefName plumbing.ReferenceName = "refs/heads/dev"
 	for _, ref := range refs {
 		if ref.Name() == defaultRefName {
-			result = LatestCommitInfo{
-				Hash:      shorHash(ref.Hash().String()),
-				LatestTag: latestTag,
-			}
-			return result, nil
+			result.MainHash = shorHash(ref.Hash().String())
+		}
+		if ref.Name() == devRefName {
+			result.DevHash = shorHash(ref.Hash().String())
 		}
 	}
 
-	return result, errors.New("no HEAD found")
+	if result.MainHash == "" {
+		return result, errors.New("no HEAD found")
+	}
+
+	return result, nil
 }
 
 func shorHash(hash string) string {

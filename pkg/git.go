@@ -28,7 +28,7 @@ import (
 )
 
 func getLatestInfo(repo *github.Repository) (result LatestCommitInfo, err error) {
-	remoteUrl := repo.GetSSHURL()
+	remoteUrl := repo.GetCloneURL()
 	slog.Debug("git ls-remote " + remoteUrl)
 	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",

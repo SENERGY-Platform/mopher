@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-github/v54 v54.0.0
+	github.com/slack-go/slack v0.12.3
 	golang.org/x/mod v0.12.0
 	gonum.org/v1/gonum v0.14.0
 )
@@ -21,6 +22,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
+	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect

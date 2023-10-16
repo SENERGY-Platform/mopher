@@ -17,20 +17,56 @@
 package pkg
 
 import (
+	"errors"
+	"fmt"
 	"io"
-	"log"
+	"os"
+	"strings"
 )
 
-func Mopher(writer io.Writer, org string, maxConn int, graph string, verbose bool, dep string, warnUnsyncDev bool) {
+func Mopher(output string, org string, maxConn int, graph string, verbose bool, dep string, warnUnsyncDev bool) (err error) {
+	var writer io.Writer
+	switch {
+	case strings.HasPrefix(output, "http://") || strings.HasPrefix(output, "https://"):
+		temp := NewSlackWriter(output, verbose)
+		defer func() {
+			if err == nil {
+				err = temp.Close()
+				if err != nil {
+					err = fmt.Errorf("unable to send output %w", err)
+				}
+			}
+		}()
+		writer = io.MultiWriter(temp, os.Stdout)
+	case output == "":
+		writer = os.Stdout
+	default:
+		var file io.WriteCloser
+		file, err = os.OpenFile(output, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("unable to open output file %v %w", output, err)
+		}
+		writer = file
+		defer func() {
+			if err == nil {
+				err = file.Close()
+				if err != nil {
+					err = fmt.Errorf("unable to close output file %v %w", output, err)
+				}
+			}
+		}()
+	}
+	return MopherWithWriter(writer, org, maxConn, graph, verbose, dep, warnUnsyncDev)
+}
+
+func MopherWithWriter(writer io.Writer, org string, maxConn int, graph string, verbose bool, dep string, warnUnsyncDev bool) error {
 	if org == "" {
-		log.Fatal("missing org input")
-		return
+		return errors.New("missing org input")
 	}
 
 	parsed, err := LoadOrg(org, maxConn)
 	if err != nil {
-		log.Fatal(err)
-		return
+		return err
 	}
 
 	parsed.SetOutput(writer)
@@ -38,20 +74,18 @@ func Mopher(writer io.Writer, org string, maxConn int, graph string, verbose boo
 	if graph != "" {
 		err = parsed.StoreGraph(graph, verbose)
 		if err != nil {
-			log.Fatal(err)
-			return
+			return err
 		}
 	}
 	if dep != "" {
 		err = parsed.PrintDependents(dep)
 		if err != nil {
-			log.Fatal(err)
-			return
+			return err
 		}
 	}
 	err = parsed.PrintWarnings(warnUnsyncDev)
 	if err != nil {
-		log.Fatal(err)
-		return
+		return err
 	}
+	return nil
 }

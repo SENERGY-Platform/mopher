@@ -7,6 +7,9 @@ mopher scans a github org to:
   - only the master/main branch is checked
   - if the go.mod file uses a semantic version, the comparison uses the newest semantic version of the dependency
   - if the go.mod file uses a commit hash as version, the comparison uses the newest commit hash in the master/main branch of the dependency
+- warns if a dev branch is not in sync with the master/main branch
+- warns if a module name doesn't match its GitHub url
+- lists a recommended update order
 - generate a dependency graph in plantuml (optional)
 - lists where a given dependency is used in which version in this org (optional)
 
@@ -58,6 +61,12 @@ mopher will get the 'org' and 'dep' flags from the go.mod file of the current di
 ```
 ### what happens
 mopher will get the 'org' and 'dep' flags from the go.mod file of the current dir
+
+# Output
+the 'output' argument decides where the resulting warnings should be sent to:
+- default: std-out, if nothing is set
+- http (slack webhook), if with 'http://' or 'https://' prefix
+- file location, is neither empty nor http
 
 # Graph
 ```

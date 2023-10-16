@@ -68,6 +68,13 @@ the 'output' argument decides where the resulting warnings should be sent to:
 - http (slack webhook), if with 'http://' or 'https://' prefix
 - file location, is neither empty nor http
 
+# Cron
+the 'cron' lets mopher run repeatedly.
+```
+mopher -distinct -cron="* * * * *" github.com/SENERGY-Platform
+```
+the 'distinct' flag is optional and prevents repeated outputs of the same warnings 
+
 # Graph
 ```
 mopher -graph=graph.plantuml github.com/SENERGY-Platform
@@ -84,6 +91,9 @@ WARNING: http://www.plantuml.com/plantuml/uml has a size limit
 ```
 mopher -debug github.com/SENERGY-Platform
 ```
+
+# Env
+all program-arguments can be passed as environment variable. the envorionment variable name is the argument in caps lock camel-case with the 'MOPHER_' prefix. for example 'output' becomes 'MOPHER_OUTPUT'
 
 # Error-Handling
 to handle

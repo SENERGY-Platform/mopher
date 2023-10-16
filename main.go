@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/SENERGY-Platform/mopher/pkg"
 	"golang.org/x/mod/modfile"
 	"log"
@@ -27,6 +28,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"regexp"
 	"strings"
 	"syscall"
 )
@@ -50,6 +52,20 @@ func main() {
 		return nil
 	})
 	flag.Parse()
+
+	//set args by environment variable, if arg is empty and the environment variable is not
+	flag.VisitAll(func(f *flag.Flag) {
+		if f.Value.String() == "" {
+			env := os.Getenv(argNameToEnvName(f.Name))
+			if env != "" {
+				fmt.Println("set arg by env", f.Name)
+				err := f.Value.Set(env)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+	})
 
 	args := flag.Args()
 	switch len(args) {
@@ -97,6 +113,8 @@ func main() {
 	if distinct {
 		config.PreOutputHook = pkg.GetDistinctHook()
 	}
+
+	slog.Debug("Startup", "config", config)
 
 	if cron != "" {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -157,4 +175,19 @@ func getParamsFromDir(arg string) (org string, dep string, err error) {
 		return org, dep, err
 	}
 	return getParamsFromGithubUrl(mod.Module.Mod.Path)
+}
+
+var camel = regexp.MustCompile("(^[^A-Z]*|[A-Z]*)([A-Z][^A-Z]+|$)")
+
+func argNameToEnvName(s string) string {
+	var a []string
+	for _, sub := range camel.FindAllStringSubmatch(s, -1) {
+		if sub[1] != "" {
+			a = append(a, sub[1])
+		}
+		if sub[2] != "" {
+			a = append(a, sub[2])
+		}
+	}
+	return "MOPHER_" + strings.ToUpper(strings.Join(a, "_"))
 }

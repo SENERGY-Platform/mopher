@@ -53,7 +53,7 @@ func SendSlackNotification(webhook string, message string) error {
 	if webhook == "" {
 		return nil
 	}
-	msg := fmt.Sprintf("Mopher Notification:\n%v\n", message)
+	msg := fmt.Sprintf("Mopher Notification:%v", message)
 	timeout, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	err := slack.PostWebhookContext(timeout, webhook, &slack.WebhookMessage{
 		Text: msg,

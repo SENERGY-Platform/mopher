@@ -24,68 +24,84 @@ import (
 	"strings"
 )
 
-func Mopher(output string, org string, maxConn int, graph string, verbose bool, dep string, warnUnsyncDev bool) (err error) {
-	var writer io.Writer
-	switch {
-	case strings.HasPrefix(output, "http://") || strings.HasPrefix(output, "https://"):
-		temp := NewSlackWriter(output, verbose)
-		defer func() {
-			if err == nil {
-				err = temp.Close()
-				if err != nil {
-					err = fmt.Errorf("unable to send output %w", err)
-				}
-			}
-		}()
-		writer = io.MultiWriter(temp, os.Stdout)
-	case output == "":
-		writer = os.Stdout
-	default:
-		var file io.WriteCloser
-		file, err = os.OpenFile(output, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-		if err != nil {
-			return fmt.Errorf("unable to open output file %v %w", output, err)
-		}
-		writer = file
-		defer func() {
-			if err == nil {
-				err = file.Close()
-				if err != nil {
-					err = fmt.Errorf("unable to close output file %v %w", output, err)
-				}
-			}
-		}()
-	}
-	return MopherWithWriter(writer, org, maxConn, graph, verbose, dep, warnUnsyncDev)
+type MopherConfig struct {
+	Writer        io.Writer
+	Output        string //creates writer if none is set
+	Org           string
+	MaxConn       int
+	Graph         string
+	Verbose       bool
+	Dep           string
+	WarnUnsyncDev bool
+	PreOutputHook PreOutputHookFunction
 }
 
-func MopherWithWriter(writer io.Writer, org string, maxConn int, graph string, verbose bool, dep string, warnUnsyncDev bool) error {
-	if org == "" {
+type PreOutputHookFunction = func(warnings string) (changedWarnings string, shouldBeWritenToOutput bool)
+
+func Mopher(config MopherConfig) error {
+	if config.Org == "" {
 		return errors.New("missing org input")
 	}
 
-	parsed, err := LoadOrg(org, maxConn)
+	parsed, err := LoadOrg(config.Org, config.MaxConn)
 	if err != nil {
 		return err
 	}
 
-	parsed.SetOutput(writer)
+	var writer strings.Builder
+	parsed.SetOutput(&writer)
+	defer writer.Reset()
 
-	if graph != "" {
-		err = parsed.StoreGraph(graph, verbose)
+	if config.Graph != "" {
+		err = parsed.StoreGraph(config.Graph, config.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	if dep != "" {
-		err = parsed.PrintDependents(dep)
+	if config.Dep != "" {
+		err = parsed.PrintDependents(config.Dep)
 		if err != nil {
 			return err
 		}
 	}
-	err = parsed.PrintWarnings(warnUnsyncDev)
+	err = parsed.PrintWarnings(config.WarnUnsyncDev)
 	if err != nil {
 		return err
 	}
+
+	warnings := writer.String()
+
+	write := true
+	if config.PreOutputHook != nil {
+		warnings, write = config.PreOutputHook(warnings)
+	}
+
+	if write {
+		switch {
+		case config.Writer != nil:
+			_, err = config.Writer.Write([]byte(warnings))
+		case strings.HasPrefix(config.Output, "http://") || strings.HasPrefix(config.Output, "https://"):
+			err = SendSlackNotification(config.Output, warnings)
+		case config.Output == "":
+			fmt.Print(warnings)
+		default:
+			var file io.WriteCloser
+			file, err = os.OpenFile(config.Output, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+			if err != nil {
+				return fmt.Errorf("unable to open output file %v %w", config.Output, err)
+			}
+			defer func() {
+				err := file.Close()
+				if err != nil {
+					fmt.Println("unable to close output file", config.Output, err)
+				}
+			}()
+			_, err = config.Writer.Write([]byte(warnings))
+			if err != nil {
+				return fmt.Errorf("unable to open write to output file %v %w", config.Output, err)
+			}
+		}
+	}
+
 	return nil
 }

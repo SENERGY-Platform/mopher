@@ -32,12 +32,14 @@ func main() {
 	var org, dep, graph, output string
 	var verbose bool
 	var warnUnsyncDev bool
+	var distinct bool
 	var maxConn int
 	flag.StringVar(&org, "org", "", "github org to be scanned")
 	flag.StringVar(&output, "output", "", "output, defaults to std-out; may be a file location or a (slack webhook) url")
 	flag.StringVar(&dep, "dep", "", "dependency to be scanned for in org (optional)")
 	flag.StringVar(&graph, "graph", "", "output file for plantuml dependency graph (optional)")
 	flag.BoolVar(&verbose, "graph_verbose", false, "include none org dependencies in plantuml")
+	flag.BoolVar(&distinct, "distinct", false, "only output if output has changed (useful for cron jobs)")
 	flag.BoolVar(&warnUnsyncDev, "warn_unsync_dev", true, "warn if dev and master/main branches are not at the same commit")
 	flag.IntVar(&maxConn, "max_conn", 25, "max parallel connections to github")
 
@@ -80,7 +82,21 @@ func main() {
 		return
 	}
 
-	err := pkg.Mopher(output, org, maxConn, graph, verbose, dep, warnUnsyncDev)
+	config := pkg.MopherConfig{
+		Output:        output,
+		Org:           org,
+		MaxConn:       maxConn,
+		Graph:         graph,
+		Verbose:       verbose,
+		Dep:           dep,
+		WarnUnsyncDev: warnUnsyncDev,
+	}
+
+	if distinct {
+		config.PreOutputHook = pkg.GetDistinctHook()
+	}
+
+	err := pkg.Mopher(config)
 	if err != nil {
 		log.Fatal(err)
 	}

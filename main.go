@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"github.com/SENERGY-Platform/mopher/pkg"
@@ -24,21 +25,22 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 )
 
 func main() {
-	var org, dep, graph, output string
-	var verbose bool
-	var warnUnsyncDev bool
-	var distinct bool
+	var org, dep, graph, output, cron string
+	var verbose, warnUnsyncDev, distinct bool
 	var maxConn int
 	flag.StringVar(&org, "org", "", "github org to be scanned")
 	flag.StringVar(&output, "output", "", "output, defaults to std-out; may be a file location or a (slack webhook) url")
 	flag.StringVar(&dep, "dep", "", "dependency to be scanned for in org (optional)")
 	flag.StringVar(&graph, "graph", "", "output file for plantuml dependency graph (optional)")
 	flag.BoolVar(&verbose, "graph_verbose", false, "include none org dependencies in plantuml")
+	flag.StringVar(&cron, "cron", "", "run repeatedly")
 	flag.BoolVar(&distinct, "distinct", false, "only output if output has changed (useful for cron jobs)")
 	flag.BoolVar(&warnUnsyncDev, "warn_unsync_dev", true, "warn if dev and master/main branches are not at the same commit")
 	flag.IntVar(&maxConn, "max_conn", 25, "max parallel connections to github")
@@ -96,11 +98,25 @@ func main() {
 		config.PreOutputHook = pkg.GetDistinctHook()
 	}
 
-	err := pkg.Mopher(config)
-	if err != nil {
-		log.Fatal(err)
-	}
+	if cron != "" {
+		ctx, cancel := context.WithCancel(context.Background())
 
+		err := pkg.CronMopher(ctx, cron, config)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		shutdown := make(chan os.Signal, 1)
+		signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
+		sig := <-shutdown
+		log.Println("received shutdown signal", sig)
+		cancel()
+	} else {
+		err := pkg.Mopher(config)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func getParamsFromArg(arg string) (org string, dep string, err error) {

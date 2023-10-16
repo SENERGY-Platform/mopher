@@ -17,9 +17,12 @@
 package pkg
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	cron "github.com/robfig/cron/v3"
 	"io"
+	"log"
 	"os"
 	"strings"
 )
@@ -37,6 +40,32 @@ type MopherConfig struct {
 }
 
 type PreOutputHookFunction = func(warnings string) (changedWarnings string, shouldBeWritenToOutput bool)
+
+func CronMopher(ctx context.Context, cronString string, config MopherConfig) error {
+	c := cron.New()
+	_, err := c.AddFunc(cronString, func() {
+		err := Mopher(config)
+		if err != nil {
+			log.Println("ERROR:", err)
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	//initial run
+	err = Mopher(config)
+	if err != nil {
+		return err
+	}
+
+	c.Start()
+	go func() {
+		<-ctx.Done()
+		c.Stop()
+	}()
+	return nil
+}
 
 func Mopher(config MopherConfig) error {
 	if config.Org == "" {

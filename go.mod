@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/go-git/go-git/v5 v5.8.1
 	github.com/google/go-github/v54 v54.0.0
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/slack-go/slack v0.12.3
 	golang.org/x/mod v0.12.0
 	gonum.org/v1/gonum v0.14.0

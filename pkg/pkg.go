@@ -17,6 +17,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,7 +25,9 @@ import (
 	cron "github.com/robfig/cron/v3"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 )
@@ -139,7 +142,7 @@ func Mopher(config MopherConfig) error {
 		case config.Writer != nil:
 			_, err = config.Writer.Write([]byte(templateOutput))
 		case strings.HasPrefix(config.Output, "http://") || strings.HasPrefix(config.Output, "https://"):
-			err = SendSlackNotification(config.Output, templateOutput)
+			err = SendHttpPost(config.Output, templateOutput)
 		case config.Output == "":
 			fmt.Print(templateOutput)
 		default:
@@ -161,5 +164,22 @@ func Mopher(config MopherConfig) error {
 		}
 	}
 
+	return nil
+}
+
+func SendHttpPost(endpoint string, message string) error {
+	resp, err := http.Post(endpoint, "application/json", bytes.NewBufferString(message))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode > 299 {
+		body, err := io.ReadAll(resp.Body)
+		err2 := errors.New("unexpected status code " + strconv.Itoa(resp.StatusCode) + ": " + string(body))
+		if err != nil {
+			return errors.Join(err, err2)
+		}
+		return err2
+	}
 	return nil
 }

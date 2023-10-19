@@ -57,14 +57,12 @@ func main() {
 
 	//set args by environment variable, if arg is empty and the environment variable is not
 	flag.VisitAll(func(f *flag.Flag) {
-		if f.Value.String() == "" {
-			env := os.Getenv(argNameToEnvName(f.Name))
-			if env != "" {
-				fmt.Println("set arg by env", f.Name)
-				err := f.Value.Set(env)
-				if err != nil {
-					log.Fatal(err)
-				}
+		env := os.Getenv(argNameToEnvName(f.Name))
+		if env != "" {
+			fmt.Printf("set arg %v by env %v\n", f.Name, env)
+			err := f.Value.Set(env)
+			if err != nil {
+				log.Fatal(err)
 			}
 		}
 	})

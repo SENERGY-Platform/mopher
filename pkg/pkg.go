@@ -118,7 +118,7 @@ func Mopher(config MopherConfig) error {
 		var templateInput string
 		switch config.OutputEncode {
 		case "application/json":
-			temp, err := json.Marshal(warnings)
+			temp, err := json.Marshal(strings.TrimSpace(warnings))
 			if err != nil {
 				return err
 			}

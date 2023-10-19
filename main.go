@@ -34,12 +34,13 @@ import (
 )
 
 func main() {
-	var org, dep, graph, output, outputTemplate, cron string
+	var org, dep, graph, output, outputTemplate, outputEncode, cron string
 	var verbose, warnUnsyncDev, distinct bool
 	var maxConn int
 	flag.StringVar(&org, "org", "", "github org to be scanned")
 	flag.StringVar(&output, "output", "", "output, defaults to std-out; may be a file location or a url")
 	flag.StringVar(&outputTemplate, "output_template", "{{.Output}}", "template for output")
+	flag.StringVar(&outputEncode, "output_encode", "plain/text", "encode output as plain/text or application/json")
 	flag.StringVar(&dep, "dep", "", "dependency to be scanned for in org (optional)")
 	flag.StringVar(&graph, "graph", "", "output file for plantuml dependency graph (optional)")
 	flag.BoolVar(&verbose, "graph_verbose", false, "include none org dependencies in plantuml")
@@ -104,6 +105,7 @@ func main() {
 	config := pkg.MopherConfig{
 		Output:         output,
 		OutputTemplate: outputTemplate,
+		OutputEncode:   outputEncode,
 		Org:            org,
 		MaxConn:        maxConn,
 		Graph:          graph,

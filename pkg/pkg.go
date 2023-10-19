@@ -18,6 +18,7 @@ package pkg
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	cron "github.com/robfig/cron/v3"
@@ -39,6 +40,7 @@ type MopherConfig struct {
 	WarnUnsyncDev  bool
 	PreOutputHook  PreOutputHookFunction
 	OutputTemplate string
+	OutputEncode   string
 }
 
 type PreOutputHookFunction = func(warnings string) (changedWarnings string, shouldBeWritenToOutput bool)
@@ -113,8 +115,22 @@ func Mopher(config MopherConfig) error {
 	}
 
 	if write {
+		var templateInput string
+		switch config.OutputEncode {
+		case "application/json":
+			temp, err := json.Marshal(warnings)
+			if err != nil {
+				return err
+			}
+			templateInput = string(temp)
+		case "plain/text":
+			templateInput = warnings
+		default:
+			templateInput = warnings
+		}
+
 		templateOutBuff := strings.Builder{}
-		err = tmpl.Execute(&templateOutBuff, map[string]interface{}{"Output": warnings})
+		err = tmpl.Execute(&templateOutBuff, map[string]interface{}{"Output": templateInput})
 		if err != nil {
 			return err
 		}
@@ -138,7 +154,7 @@ func Mopher(config MopherConfig) error {
 					fmt.Println("unable to close output file", config.Output, err)
 				}
 			}()
-			_, err = config.Writer.Write([]byte(templateOutput))
+			_, err = file.Write([]byte(templateOutput))
 			if err != nil {
 				return fmt.Errorf("unable to open write to output file %v %w", config.Output, err)
 			}

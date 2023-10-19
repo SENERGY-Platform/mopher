@@ -25,18 +25,20 @@ import (
 	"log"
 	"os"
 	"strings"
+	"text/template"
 )
 
 type MopherConfig struct {
-	Writer        io.Writer
-	Output        string //creates writer if none is set
-	Org           string
-	MaxConn       int
-	Graph         string
-	Verbose       bool
-	Dep           string
-	WarnUnsyncDev bool
-	PreOutputHook PreOutputHookFunction
+	Writer         io.Writer
+	Output         string //creates writer if none is set
+	Org            string
+	MaxConn        int
+	Graph          string
+	Verbose        bool
+	Dep            string
+	WarnUnsyncDev  bool
+	PreOutputHook  PreOutputHookFunction
+	OutputTemplate string
 }
 
 type PreOutputHookFunction = func(warnings string) (changedWarnings string, shouldBeWritenToOutput bool)
@@ -70,6 +72,11 @@ func CronMopher(ctx context.Context, cronString string, config MopherConfig) err
 func Mopher(config MopherConfig) error {
 	if config.Org == "" {
 		return errors.New("missing org input")
+	}
+
+	tmpl, err := template.New("templ").Parse(config.OutputTemplate)
+	if err != nil {
+		return err
 	}
 
 	parsed, err := LoadOrg(config.Org, config.MaxConn)
@@ -106,13 +113,19 @@ func Mopher(config MopherConfig) error {
 	}
 
 	if write {
+		templateOutBuff := strings.Builder{}
+		err = tmpl.Execute(&templateOutBuff, map[string]interface{}{"Output": warnings})
+		if err != nil {
+			return err
+		}
+		templateOutput := templateOutBuff.String()
 		switch {
 		case config.Writer != nil:
-			_, err = config.Writer.Write([]byte(warnings))
+			_, err = config.Writer.Write([]byte(templateOutput))
 		case strings.HasPrefix(config.Output, "http://") || strings.HasPrefix(config.Output, "https://"):
-			err = SendSlackNotification(config.Output, warnings)
+			err = SendSlackNotification(config.Output, templateOutput)
 		case config.Output == "":
-			fmt.Print(warnings)
+			fmt.Print(templateOutput)
 		default:
 			var file io.WriteCloser
 			file, err = os.OpenFile(config.Output, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
@@ -125,7 +138,7 @@ func Mopher(config MopherConfig) error {
 					fmt.Println("unable to close output file", config.Output, err)
 				}
 			}()
-			_, err = config.Writer.Write([]byte(warnings))
+			_, err = config.Writer.Write([]byte(templateOutput))
 			if err != nil {
 				return fmt.Errorf("unable to open write to output file %v %w", config.Output, err)
 			}

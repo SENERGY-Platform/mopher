@@ -55,7 +55,7 @@ func main() {
 	})
 	flag.Parse()
 
-	//set args by environment variable, if arg is empty and the environment variable is not
+	//set args by environment variable, if the environment variable is not empty
 	flag.VisitAll(func(f *flag.Flag) {
 		env := os.Getenv(argNameToEnvName(f.Name))
 		if env != "" {

@@ -60,12 +60,6 @@ func CronMopher(ctx context.Context, cronString string, config MopherConfig) err
 		return err
 	}
 
-	//initial run
-	err = Mopher(config)
-	if err != nil {
-		return err
-	}
-
 	c.Start()
 	go func() {
 		<-ctx.Done()

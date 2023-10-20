@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"sort"
 	"strings"
 )
 
@@ -160,6 +161,7 @@ func (this *Parsed) PrintUnsincBranches() (deprecated []string, err error) {
 		}
 	}
 	if len(unsyncRepos) > 0 {
+		sort.Strings(unsyncRepos)
 		_, err = fmt.Fprintln(this.output, "\n\nfound repositories where master/main and dev branches are not synced:")
 		if err != nil {
 			return deprecated, err

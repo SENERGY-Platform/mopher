@@ -103,6 +103,7 @@ func getLatestGoVersion() string {
 		return buildVersion
 	}
 	tags = append(tags, buildVersion)
+	tags = filterRcTags(tags)
 	tags = dockerhubTagCleanup(tags)
 	slices.SortFunc(tags, func(a, b string) int {
 		return semver.Compare(ensureSemverComparable(b), ensureSemverComparable(a))
@@ -116,6 +117,15 @@ func dockerhubTagCleanup(tags []string) (result []string) {
 		trimmed := strings.Split(tag, "-")[0]
 		if isValidSemanticVersion(trimmed) && !slices.Contains(result, trimmed) {
 			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+func filterRcTags(tags []string) (result []string) {
+	for _, tag := range tags {
+		if !strings.Contains(tag, "rc") {
+			result = append(result, tag)
 		}
 	}
 	return result

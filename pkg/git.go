@@ -18,6 +18,7 @@ package pkg
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -28,7 +29,12 @@ import (
 )
 
 func getLatestInfo(repo *github.Repository) (result LatestCommitInfo, err error) {
-	remoteUrl := repo.GetCloneURL()
+	return getLatestInfoFromUrl(repo.GetCloneURL())
+}
+
+var LatestInfoError = errors.New("LatestInfoError")
+
+func getLatestInfoFromUrl(remoteUrl string) (result LatestCommitInfo, err error) {
 	slog.Debug("git ls-remote " + remoteUrl)
 	rem := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
@@ -38,7 +44,7 @@ func getLatestInfo(repo *github.Repository) (result LatestCommitInfo, err error)
 		Timeout: 30,
 	})
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("%w: remoteUrl=%v", errors.Join(err, LatestInfoError), remoteUrl)
 	}
 
 	defaultRefName := plumbing.Master

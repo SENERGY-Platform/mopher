@@ -75,6 +75,18 @@ mopher -distinct -cron="* * * * *" github.com/SENERGY-Platform
 ```
 the 'distinct' flag is optional and prevents repeated outputs of the same warnings 
 
+# Update support
+
+```
+mopher -u
+```
+prints go get commands that can be used to update go dependencies of the same org
+
+```
+mopher -ux
+```
+executes these commands instead of printing them
+
 # Graph
 ```
 mopher -graph=graph.plantuml github.com/SENERGY-Platform

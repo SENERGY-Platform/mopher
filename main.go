@@ -26,6 +26,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path"
 	"regexp"
@@ -34,9 +35,14 @@ import (
 )
 
 func main() {
+	var umod, umodeExecute bool
 	var org, dep, graph, output, outputTemplate, outputEncode, cron string
 	var verbose, warnUnsyncDev, distinct bool
 	var maxConn int
+
+	flag.BoolVar(&umod, "u", false, "update mode: check local repository for updates and print go get commands")
+	flag.BoolVar(&umodeExecute, "ux", false, "update mode: check local repository for updates and execute go get commands")
+
 	flag.StringVar(&org, "org", "", "github org to be scanned")
 	flag.StringVar(&output, "output", "", "output, defaults to std-out; may be a file location or a url")
 	flag.StringVar(&outputTemplate, "output_template", "{{.Output}}", "template for output")
@@ -66,6 +72,11 @@ func main() {
 			}
 		}
 	})
+
+	if umod || umodeExecute {
+		runUpdateMode(umodeExecute)
+		return
+	}
 
 	args := flag.Args()
 	switch len(args) {
@@ -135,6 +146,37 @@ func main() {
 		err := pkg.Mopher(config)
 		if err != nil {
 			log.Fatal(err)
+		}
+	}
+}
+
+func runUpdateMode(execute bool) {
+	file, err := os.ReadFile("go.mod")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	mod, err := modfile.ParseLax("go.mod", file, nil)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	commands, err := pkg.RunUpdateMode(mod)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	if execute {
+		for _, cmd := range commands {
+			_, err := exec.Command(cmd.Cmd, cmd.Args...).Output()
+			if err != nil {
+				log.Fatal(err)
+				return
+			}
+		}
+	} else {
+		for _, cmd := range commands {
+			fmt.Printf("%v %v\n", cmd.Cmd, strings.Join(cmd.Args, " "))
 		}
 	}
 }

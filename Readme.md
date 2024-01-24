@@ -87,6 +87,15 @@ mopher -ux
 ```
 executes these commands instead of printing them
 
+example:
+```
+#:~/workspace/go/external-task-worker$ ~/workspace/go/mopher/mopher -ux
+go get github.com/SENERGY-Platform/marshaller@v0.0.10
+go get -u -t ./...
+go mod tidy
+```
+
+
 # Graph
 ```
 mopher -graph=graph.plantuml github.com/SENERGY-Platform

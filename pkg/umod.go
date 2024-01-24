@@ -48,12 +48,16 @@ func RunUpdateMode(mod *modfile.File) (commands []UpdateModeCommand, err error) 
 			}
 		}
 	}
-	if len(commands) > 0 {
-		commands = append(commands, UpdateModeCommand{
+	commands = append(commands,
+		UpdateModeCommand{
+			Cmd:  "go",
+			Args: []string{"get", "-u", "-t", "./..."},
+		},
+		UpdateModeCommand{
 			Cmd:  "go",
 			Args: []string{"mod", "tidy"},
-		})
-	}
+		},
+	)
 	return commands, nil
 }
 

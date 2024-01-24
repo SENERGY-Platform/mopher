@@ -166,17 +166,14 @@ func runUpdateMode(execute bool) {
 		log.Fatal(err)
 		return
 	}
-	if execute {
-		for _, cmd := range commands {
+	for _, cmd := range commands {
+		fmt.Printf("%v %v\n", cmd.Cmd, strings.Join(cmd.Args, " "))
+		if execute {
 			_, err := exec.Command(cmd.Cmd, cmd.Args...).Output()
 			if err != nil {
 				log.Fatal(err)
 				return
 			}
-		}
-	} else {
-		for _, cmd := range commands {
-			fmt.Printf("%v %v\n", cmd.Cmd, strings.Join(cmd.Args, " "))
 		}
 	}
 }

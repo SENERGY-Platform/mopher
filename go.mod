@@ -1,6 +1,6 @@
 module github.com/SENERGY-Platform/mopher
 
-go 1.21
+go 1.22
 
 require (
 	github.com/go-git/go-git/v5 v5.11.0

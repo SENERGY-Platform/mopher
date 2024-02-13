@@ -41,6 +41,7 @@ type MopherConfig struct {
 	Verbose        bool
 	Dep            string
 	WarnUnsyncDev  bool
+	WarnGoVersion  bool
 	PreOutputHook  PreOutputHookFunction
 	OutputTemplate string
 	OutputEncode   string
@@ -99,7 +100,7 @@ func Mopher(config MopherConfig) error {
 			return err
 		}
 	}
-	err = parsed.PrintWarnings(config.WarnUnsyncDev)
+	err = parsed.PrintWarnings(config.WarnUnsyncDev, config.WarnGoVersion)
 	if err != nil {
 		return err
 	}

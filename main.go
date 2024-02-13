@@ -37,7 +37,7 @@ import (
 func main() {
 	var umod, umodeExecute bool
 	var org, dep, graph, output, outputTemplate, outputEncode, cron string
-	var verbose, warnUnsyncDev, distinct bool
+	var verbose, warnUnsyncDev, warnGoVersion, distinct bool
 	var maxConn int
 
 	flag.BoolVar(&umod, "u", false, "update mode: check local repository for updates and print go get commands")
@@ -53,6 +53,7 @@ func main() {
 	flag.StringVar(&cron, "cron", "", "run repeatedly")
 	flag.BoolVar(&distinct, "distinct", false, "only output if output has changed (useful for cron jobs)")
 	flag.BoolVar(&warnUnsyncDev, "warn_unsync_dev", true, "warn if dev and master/main branches are not at the same commit")
+	flag.BoolVar(&warnGoVersion, "warn_go_version", false, "warn if used go version is not the newest version")
 	flag.IntVar(&maxConn, "max_conn", 25, "max parallel connections to github")
 
 	flag.BoolFunc("debug", "enables debug logs", func(s string) error {
@@ -121,6 +122,7 @@ func main() {
 		Verbose:        verbose,
 		Dep:            dep,
 		WarnUnsyncDev:  warnUnsyncDev,
+		WarnGoVersion:  warnGoVersion,
 	}
 
 	if distinct {

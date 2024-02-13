@@ -91,7 +91,7 @@ func (this *Parsed) PrintDependents(dep string) error {
 	return nil
 }
 
-func (this *Parsed) PrintWarnings(warnUnsyncDev bool) error {
+func (this *Parsed) PrintWarnings(warnUnsyncDev bool, warnGoVersion bool) error {
 	updateOrderFilter := map[string]bool{}
 
 	deprecated, err := this.PrintWrongModuleNameWarnings()
@@ -101,12 +101,15 @@ func (this *Parsed) PrintWarnings(warnUnsyncDev bool) error {
 	for _, d := range deprecated {
 		updateOrderFilter[d] = true
 	}
-	deprecated, err = this.PrintGoVersionWarnings()
-	if err != nil {
-		return err
-	}
-	for _, d := range deprecated {
-		updateOrderFilter[d] = true
+
+	if warnGoVersion {
+		deprecated, err = this.PrintGoVersionWarnings()
+		if err != nil {
+			return err
+		}
+		for _, d := range deprecated {
+			updateOrderFilter[d] = true
+		}
 	}
 
 	if warnUnsyncDev {

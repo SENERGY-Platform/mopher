@@ -1,0 +1,30 @@
+name: Dependency License Report
+on:
+  push:
+    branches:
+      - master
+      - main
+      - dev
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.22'
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Dependency License Report
+        run: go install github.com/google/go-licenses@latest && go-licenses report ./... > dependency_license_report.csv
+
+      - name: Store Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency_license_report
+          path: dependency_license_report.csv

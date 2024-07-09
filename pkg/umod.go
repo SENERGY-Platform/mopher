@@ -27,7 +27,7 @@ type UpdateModeCommand struct {
 	Args []string
 }
 
-func RunUpdateMode(mod *modfile.File) (commands []UpdateModeCommand, err error) {
+func RunUpdateMode(mod *modfile.File, internal bool) (commands []UpdateModeCommand, err error) {
 	org := getOrgOfGithubPath(mod.Module.Mod.Path)
 	for _, req := range mod.Require {
 		if getOrgOfGithubPath(req.Mod.Path) == org {
@@ -48,16 +48,25 @@ func RunUpdateMode(mod *modfile.File) (commands []UpdateModeCommand, err error) 
 			}
 		}
 	}
-	commands = append(commands,
-		UpdateModeCommand{
-			Cmd:  "go",
-			Args: []string{"get", "-u", "-t", "./..."},
-		},
-		UpdateModeCommand{
-			Cmd:  "go",
-			Args: []string{"mod", "tidy"},
-		},
-	)
+	if internal {
+		commands = append(commands,
+			UpdateModeCommand{
+				Cmd:  "go",
+				Args: []string{"mod", "tidy"},
+			},
+		)
+	} else {
+		commands = append(commands,
+			UpdateModeCommand{
+				Cmd:  "go",
+				Args: []string{"get", "-u", "-t", "./..."},
+			},
+			UpdateModeCommand{
+				Cmd:  "go",
+				Args: []string{"mod", "tidy"},
+			},
+		)
+	}
 	return commands, nil
 }
 

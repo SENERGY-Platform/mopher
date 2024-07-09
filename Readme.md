@@ -95,6 +95,18 @@ go get -u -t ./...
 go mod tidy
 ```
 
+```
+mopher -uix
+```
+does the same but without `go get -u -t ./...` 
+
+example:
+```
+#:~/workspace/go/external-task-worker$ ~/workspace/go/mopher/mopher -uix
+go get github.com/SENERGY-Platform/marshaller@v0.0.10
+go mod tidy
+```
+
 
 # Graph
 ```
